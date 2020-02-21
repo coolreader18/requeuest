@@ -15,18 +15,24 @@ def main():
         queue=tuple(map(lambda x: x[1], song_queue.song_queue.queue)),
     )
 
+def result(**args):
+    return redirect(url_for(".main", **args))
 
 @app.route("/queue-song", methods=["POST"])
 def queue_song():
     url = request.form["url"]
+    if url.startswith("skipsong "):
+        with open("skippasswd") as f:
+            secret = f.read()
+        if url == "skipsong " + secret:
+            song_queue.skip_event.set()
+            return result(ok=0)
     try:
         song_queue.queue_song(url)
     except Exception as e:
-        params = {"ok": 1, "err": e.args[0]}
+        return result(ok=1, err=e.args[0])
     else:
-        params = {"ok": 0}
-    return redirect(url_for(".main", **params))
-
+        return result(ok=0)
 
 if __name__ == "__main__":
     app.run()

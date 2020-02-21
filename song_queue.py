@@ -5,7 +5,7 @@ import hashlib
 import random
 
 import youtube_dl
-import playsound
+import simpleaudio as sa
 
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), "audio")
 if not os.path.exists(AUDIO_DIR):
@@ -13,32 +13,35 @@ if not os.path.exists(AUDIO_DIR):
 
 song_queue = queue.Queue()
 
-played = set(os.listdir(AUDIO_DIR))
+played = set()
 
 currently_playing = None
 
+skip_event = threading.Event()
 
 def playsong(song, retry=4):
-    try:
-        playsound.playsound(song)
-    except playsound.PlaysoundException:
-        if retry > 0:
-            playsong(song, retry=retry - 1)
-
+    wav = sa.WaveObject.from_wave_file(song)
+    play = wav.play()
+    while play.is_playing():
+        if skip_event.wait(timeout=0.5):
+            skip_event.clear()
+            play.stop()
+            break
 
 def play_worker():
     global currently_playing
     while True:
         try:
             # if there aren't 5 songs in the previously played queue, wait
-            songfile, url = song_queue.get(len(played) < 5)
-            played.add(songfile)
-            currently_playing = url
-            playsong(songfile)
-            song_queue.task_done()
-            currently_playing = None
+            info = song_queue.get(len(played) < 5)
+            played.add(info)
         except queue.Empty:
-            playsong(random.choice(tuple(played)))
+            info = random.choice(tuple(played))
+        songfile, url = info
+        currently_playing = url
+        playsong(songfile)
+        song_queue.task_done()
+        currently_playing = None
 
 
 t = threading.Thread(target=play_worker, daemon=True)
@@ -55,9 +58,8 @@ def make_ydl(out):
             "postprocessors": [
                 {
                     "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": 5,
-                    "nopostoverwrites": False,
+                    "preferredcodec": "wav",
+                    "preferredquality": "5",
                 }
             ],
             "no_color": True,
@@ -66,12 +68,13 @@ def make_ydl(out):
 
 
 def queue_song(url):
-    output_file = AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest() + ".mp3"
-    info = output_file, url
+    output_file = AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest()
+    info = output_file + ".wav", url
 
     if currently_playing == url or info in song_queue.queue:
         raise Exception("song already in queue, wait until it plays")
 
-    with make_ydl(output_file) as ydl:
-        ydl.download([url])
-    song_queue.put((output_file, url))
+    if info not in played:
+        with make_ydl(output_file + ".pre") as ydl:
+            ydl.download([url])
+    song_queue.put(info)
