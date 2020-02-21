@@ -40,3 +40,20 @@ input {
 .errmsg {
   font-family: "Courier New", Courier, monospace;
 }
+
+#main {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: flex-start;
+}
+
+h3 {
+  margin: 0;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}

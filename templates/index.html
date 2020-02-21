@@ -9,18 +9,44 @@
 
   <body>
     <h1>Codeday Song Request</h1>
-    <form action="/queue-song" method="post">
-      <label for="url">Song URL (youtube, etc): </label>
-      <input name="url" required />
-      <input type="submit" value="Submit" />
-    </form>
-    {% if status is defined and status is not none %}
-      {% if status == "0" %}
-        <p class="success">Success!</p>
-      {% else %}
-        <p class="failure">An error occurred. Is your url valid?</p>
-        <p class="errmsg">{{ status }}</p>
-      {% endif %}
-    {% endif %}
+    <div id="main">
+      <div>
+        <form action="/queue-song" method="post">
+          <label for="url">Song URL (youtube, etc): </label>
+          <input name="url" required />
+          <input type="submit" value="Submit" />
+        </form>
+        {% if ok is not none %}
+          {% if ok == "0" %}
+            <p class="success">Success!</p>
+          {% else %}
+            <p class="failure">An error occurred. Maybe check your URL?</p>
+            <p class="errmsg">{{ err }}</p>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div>
+        {% macro songlink(url) -%}
+          <a href="{{ url }}">{{ url }}</a>          
+        {%- endmacro %}
+        <h3>Currently Playing</h3>
+        {% if playing is none %}
+          <p>Nothing right now. Add something!</p>
+        {% else %}
+          <p>{{ songlink(playing) }}</p>
+        {% endif %}
+        <h3>Queue</h3>
+        <ul>
+          {% for song in queue %}
+            <li>{{ songlink(song) }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <script>
+      setTimeout(() => {
+        location.replace("/");
+      }, 60 * 1000);
+    </script>
   </body>
 </html>

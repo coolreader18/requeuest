@@ -1,27 +1,32 @@
 from flask import Flask, request, redirect, render_template, url_for
 
-import hashlib
-
 import song_queue
-import youtube_dl
 
 app = Flask(__name__)
 
-@app.route('/')
+
+@app.route("/")
 def main():
-    return render_template("index.html", status=request.args.get("status"))
+    return render_template(
+        "index.html",
+        ok=request.args.get("ok"),
+        err=request.args.get("err"),
+        playing=song_queue.currently_playing,
+        queue=tuple(map(lambda x: x[1], song_queue.song_queue.queue)),
+    )
+
 
 @app.route("/queue-song", methods=["POST"])
 def queue_song():
     url = request.form["url"]
-    output_file = (
-        song_queue.AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest() + ".mp3"
-    )
-    with song_queue.make_ydl(output_file) as ydl:
-        try:
-            ydl.download([url])
-            ret = 0
-        except youtube_dl.utils.YoutubeDLError as e:
-            ret = e.args[0]
-    song_queue.queue_song(output_file)
-    return redirect(url_for(".main", status=ret))
+    try:
+        song_queue.queue_song(url)
+    except Exception as e:
+        params = {"ok": 1, "err": e.args[0]}
+    else:
+        params = {"ok": 0}
+    return redirect(url_for(".main", **params))
+
+
+if __name__ == "__main__":
+    app.run()

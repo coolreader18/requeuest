@@ -1,9 +1,11 @@
 import os
 import queue
 import threading
+import hashlib
+import random
 
 import youtube_dl
-from playsound import playsound
+import playsound
 
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), "audio")
 if not os.path.exists(AUDIO_DIR):
@@ -11,23 +13,35 @@ if not os.path.exists(AUDIO_DIR):
 
 song_queue = queue.Queue()
 
+played = set(os.listdir(AUDIO_DIR))
 
-def play_worker(played=()):
-    played = set(played)
+currently_playing = None
+
+
+def playsong(song, retry=4):
+    try:
+        playsound.playsound(song)
+    except playsound.PlaysoundException:
+        if retry > 0:
+            playsong(song, retry=retry - 1)
+
+
+def play_worker():
+    global currently_playing
     while True:
         try:
             # if there aren't 5 songs in the previously played queue, wait
-            song = song_queue.get(len(played) < 5)
-            played.add(song)
-            playsound(song)
+            songfile, url = song_queue.get(len(played) < 5)
+            played.add(songfile)
+            currently_playing = url
+            playsong(songfile)
             song_queue.task_done()
+            currently_playing = None
         except queue.Empty:
-            playsound(random.choice(tuple(played)))
+            playsong(random.choice(tuple(played)))
 
 
-prev_queue = list(os.listdir(AUDIO_DIR))
-
-t = threading.Thread(target=play_worker, args=(prev_queue,))
+t = threading.Thread(target=play_worker, daemon=True)
 t.start()
 
 
@@ -51,4 +65,13 @@ def make_ydl(out):
     )
 
 
-queue_song = song_queue.put
+def queue_song(url):
+    output_file = AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest() + ".mp3"
+    info = output_file, url
+
+    if currently_playing == url or info in song_queue.queue:
+        raise Exception("song already in queue, wait until it plays")
+
+    with make_ydl(output_file) as ydl:
+        ydl.download([url])
+    song_queue.put((output_file, url))
