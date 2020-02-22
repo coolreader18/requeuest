@@ -15,8 +15,10 @@ def main():
         queue=tuple(map(lambda x: x[1], song_queue.song_queue.queue)),
     )
 
+
 def result(**args):
     return redirect(url_for(".main", **args))
+
 
 @app.route("/queue-song", methods=["POST"])
 def queue_song():
@@ -33,6 +35,7 @@ def queue_song():
         return result(ok=1, err=e.args[0])
     else:
         return result(ok=0)
+
 
 if __name__ == "__main__":
     app.run()

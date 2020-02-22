@@ -19,6 +19,7 @@ currently_playing = None
 
 skip_event = threading.Event()
 
+
 def playsong(song, retry=4):
     wav = sa.WaveObject.from_wave_file(song)
     play = wav.play()
@@ -27,6 +28,7 @@ def playsong(song, retry=4):
             skip_event.clear()
             play.stop()
             break
+
 
 def play_worker():
     global currently_playing
@@ -68,13 +70,14 @@ def make_ydl(out):
 
 
 def queue_song(url):
-    output_file = AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest()
-    info = output_file + ".wav", url
+    with make_ydl("") as ydl:
+        info_dict = ydl.extract_info(url, process=False,)
+        url = info_dict.get("url", info_dict.get("webpage_url", url))
+        output_file = AUDIO_DIR + "/" + hashlib.md5(url.encode()).hexdigest()
+        info = output_file + ".wav", url
+        ydl.params["outtmpl"] = output_file + ".pre"
+        if currently_playing == url or info in song_queue.queue:
+            raise Exception("song already in queue, wait until it plays")
+        ydl.process_ie_result(info_dict)
 
-    if currently_playing == url or info in song_queue.queue:
-        raise Exception("song already in queue, wait until it plays")
-
-    if info not in played:
-        with make_ydl(output_file + ".pre") as ydl:
-            ydl.download([url])
     song_queue.put(info)
