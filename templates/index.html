@@ -26,8 +26,8 @@
         {% endif %}
       </div>
       <div>
-        {% macro songlink(url) -%}
-          <a href="{{ url }}">{{ url }}</a>          
+        {% macro songlink(info) -%}
+          <a href="{{ info.url }}">{{ info.title }}</a>          
         {%- endmacro %}
         <h3>Currently Playing</h3>
         {% if playing is none %}

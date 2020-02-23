@@ -11,8 +11,8 @@ def main():
         "index.html",
         ok=request.args.get("ok"),
         err=request.args.get("err"),
-        playing=song_queue.currently_playing,
-        queue=tuple(map(lambda x: x[1], song_queue.song_queue.queue)),
+        playing=song_queue.playing,
+        queue=tuple(song_queue.song_queue.queue),
     )
 
 
@@ -36,6 +36,8 @@ def queue_song():
     else:
         return result(ok=0)
 
+
+song_queue.start()
 
 if __name__ == "__main__":
     app.run()
